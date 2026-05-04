@@ -1,4 +1,6 @@
 let capture;
+let faceMesh;
+let predictions = [];
 
 function setup() {
   // 建立與視窗大小相同的畫布
@@ -8,6 +10,12 @@ function setup() {
   capture = createCapture(VIDEO);
   // 隱藏預設產生的 HTML5 video 元件，我們只要在畫布上繪製它
   capture.hide();
+
+  // 初始化 FaceMesh 模型
+  faceMesh = ml5.facemesh(capture, () => console.log("模型準備就緒"));
+
+  // 當偵測到臉部特徵時，更新資料
+  faceMesh.on("predict", results => predictions = results);
 }
 
 function draw() {
@@ -31,11 +39,39 @@ function draw() {
   
   // 3. 繪製影像。此時 (0, 0) 是剛剛 translate 過去的位置
   image(capture, 0, 0, videoW, videoH);
+
+  // 繪製臉部特徵連線
+  if (predictions.length > 0) {
+    drawFaceLines(predictions[0].scaledMesh, videoW, videoH);
+  }
   pop();
+}
+
+// 繪製指定的臉部線條
+function drawFaceLines(mesh, w, h) {
+  // 定義多組要串接的點編號
+  const paths = [
+    [409, 270, 269, 267, 0, 37, 39, 40, 185, 61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291],
+    [76, 77, 90, 180, 85, 16, 315, 404, 320, 307, 306, 408, 304, 303, 302, 11, 72, 73, 74, 184]
+  ];
+  
+  stroke(255, 0, 0); // 紅色線條
+  strokeWeight(1);   // 粗細為 1
+  
+  let scaleX = w / capture.width;
+  let scaleY = h / capture.height;
+
+  // 巡覽所有路徑並繪製線條
+  paths.forEach(indices => {
+    for (let i = 0; i < indices.length - 1; i++) {
+      let p1 = mesh[indices[i]];
+      let p2 = mesh[indices[i + 1]];
+      line(p1[0] * scaleX, p1[1] * scaleY, p2[0] * scaleX, p2[1] * scaleY);
+    }
+  });
 }
 
 // 當瀏覽器視窗大小改變時，自動調整畫布大小
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
-
